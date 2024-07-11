@@ -1,0 +1,90 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+dist/
+build/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.migrations/
+db.sqlite3
+media/
+staticfiles/
+static/
+
+# If your build process includes running collectstatic, 
+# then you probably don't need or want to include staticfiles
+# in your Git repository. Update accordingly.
+# Refer to https://docs.djangoproject.com/en/1.7/ref/contrib/staticfiles/#staticfiles-dir for more information.
+staticfiles/
+
+# Django media directory
+media/
+
+# Pyenv
+.python-version
+
+# dotenv
+.env
+*.env
+
+# virtualenv
+.venv/
+env/
+venv/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*~
+.project
+.pydevproject
+
+# VS Code specific settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/
+*.iml
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
