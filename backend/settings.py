@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
 import cloudinary_storage
@@ -34,11 +35,11 @@ environ.Env.read_env(BASE_DIR / '.env')
 DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
-#SECRET_KEY = config("APP_SECRET_KEY")
+#SECRET_KEY = env("APP_SECRET_KEY")
 SECRET_KEY = env("APP_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = config("DEBUG_MODE", cast=bool)
+#DEBUG = env("DEBUG_MODE", cast=bool)
 # DEBUG = env("DEBUG_MODE")
 
 #ALLOWED_HOSTS = []
@@ -185,10 +186,24 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
@@ -228,6 +243,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static'),
+# ]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
