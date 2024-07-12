@@ -662,7 +662,7 @@ class BookingManager(models.Manager):
     def get_user_booked_rooms(self, user_id):
         RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
         Booking = apps.get_model('reservations', 'Booking')
-
+        
         if not user_id:
             raise serializers.ValidationError("User ID is required")
 
@@ -670,7 +670,6 @@ class BookingManager(models.Manager):
         if not user_instance:
             raise serializers.ValidationError("User does not exist")
 
-        # Filter bookings for the user with check_in still null
         bookings = Booking.objects.filter(user=user_id, check_in__isnull=True)
 
         booked_rooms = []

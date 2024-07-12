@@ -10,12 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-import os
 from pathlib import Path
 from datetime import timedelta
 import cloudinary_storage
 import environ
-# from decouple import config
 
 env = environ.Env(
     # set casting, default value
@@ -168,7 +166,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -187,25 +185,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -230,7 +213,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -247,15 +229,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# STATICFILES_DIRS = [
-#     os.path.join(BASE_DIR, 'static'),
-# ]
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -271,7 +244,6 @@ SENDCHAMP_SENDER_ID=env("SENDCHAMP_SENDER_ID")
 DOJAH_BASEURL=env("DOJAH_BASEURL")
 DOJAH_APP_ID=env("DOJAH_APP_ID")
 DOJAH_APP_KEY=env("DOJAH_APP_KEY")
-
 CLOUDINARY_CLOUD_NAME=env("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY=env("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET=env("CLOUDINARY_API_SECRET")
@@ -283,5 +255,3 @@ CLOUDINARY_API_SECRET=env("CLOUDINARY_API_SECRET")
 GUEST_ID_FOR_STAFF=env("GUEST_ID_FOR_STAFF")
 GUEST_ID_PREFIX=env("GUEST_ID_PREFIX")
 GUEST_ID_INIT_VALUE=env("GUEST_ID_INIT_VALUE")
-
-ADMIN_EMAIL = 'ebukaemmanuel71@gmail.com'

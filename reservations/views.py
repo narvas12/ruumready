@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .utils import send_admin_notification
 from rooms.models import Room
 from .serializers import  BookingCreateSerializer, BookingsHistorySerializer, CheckInSerializer, CheckOutSerializer, DashboardBootstrapSerializer, MultipleCheckInSerializer, RoomAllocationHistorySerializer, RoomBootstrapSerializer, RoomStatusSerializer, RoomByStatusSerializer, UserCheckoutSerializer
 from common.renderers import ApiCustomRenderer
@@ -22,6 +21,7 @@ from reportlab.lib.pagesizes import letter
 
 
 # Create your views here.
+
 class RoomsForCheckoutView(GenericAPIView):
     serializer_class = RoomByStatusSerializer
     renderer_classes = (ApiCustomRenderer,)
@@ -254,7 +254,7 @@ class BookRoomView(GenericAPIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    
 class MulipleCheckInView(GenericAPIView):
     serializer_class = MultipleCheckInSerializer
     renderer_classes = (ApiCustomRenderer,)
@@ -277,12 +277,12 @@ class MulipleCheckInView(GenericAPIView):
         serializer = self.serializer_class(instance=bookings, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            send_admin_notification(user_instance, room_ids, 'check-in')
             return Response({
                 'message': 'Rooms checked in successfully'
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+       
+       
 class CheckInView(GenericAPIView):
     serializer_class = CheckInSerializer
     renderer_classes = (ApiCustomRenderer,)
@@ -291,24 +291,26 @@ class CheckInView(GenericAPIView):
     def patch(self, request):
         User = apps.get_model('accounts', 'User')
        
-        user_instance = User.objects.filter(guest_id=request.data.get("user_id")).first()
+        user_instance = User.objects.filter(**{'guest_id': request.data.get("user_id")})
         if not user_instance:
-            raise ValidationError("User with that ID does not exist")
+            raise ValidationError("User with that id does not exist")
+        user_instance = user_instance[0]
 
-        record = Booking.objects.filter(room_id=request.data.get("room_id"), user_id=user_instance.id).first()
+        record = Booking.objects.filter(Q(room_id = request.data.get("room_id")) & Q(user_id = user_instance.id))
         if not record:
             raise ValidationError("User must book a room before check-in")
+        record = record[0]
 
-        serializer = self.serializer_class(instance=record, data=request.data)
+        serializer=self.serializer_class(instance=record, data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            send_admin_notification(user_instance, request.data.get("room_id"), 'check-in')
-            return Response({
-                'payload': None,
-            }, status=status.HTTP_200_OK)
+             serializer.update(record, request.data)
+             room_data=serializer.data
+             return Response({
+                    'payload':None,
+                }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
-
-
+       
+    
 class CheckOutView(GenericAPIView):
     serializer_class = CheckOutSerializer
     renderer_classes = (ApiCustomRenderer,)
@@ -316,105 +318,23 @@ class CheckOutView(GenericAPIView):
 
     def patch(self, request):
         User = apps.get_model('accounts', 'User')
-        user_instance = User.objects.filter(guest_id=request.data.get("user_id")).first()
+        user_instance = User.objects.filter(**{'guest_id': request.data.get("user_id")})
         if not user_instance:
-            raise ValidationError("User with that ID does not exist")
+            raise ValidationError("User with that id does not exist")
+        user_instance = user_instance[0]
         
-        record = Booking.objects.filter(room_id=request.data.get("room_id"), user_id=user_instance.id).first()
+        record = Booking.objects.filter(Q(room_id = request.data.get("room_id")) & Q(user_id = user_instance.id))
         if not record:
             raise ValidationError("User must book a room before check-out")
-
-        serializer = self.serializer_class(instance=record, data=request.data)
+        record = record[0]
+        serializer=self.serializer_class(instance=record, data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            send_admin_notification(user_instance, request.data.get("room_id"), 'check-out')
+            serializer.update(record, request.data)
+            room_data=serializer.data
             return Response({
-                'payload': None,
+                'payload':None,
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-
-# class MulipleCheckInView(GenericAPIView):
-#     serializer_class = MultipleCheckInSerializer
-#     renderer_classes = (ApiCustomRenderer,)
-#     # permission_classes = [IsAuthenticated]  # Uncomment if authentication is required
-
-#     def patch(self, request):
-#         User = apps.get_model('accounts', 'User')
-
-#         user_id = request.data.get("user_id")
-#         room_ids = request.data.get("room_ids")
-
-#         user_instance = User.objects.filter(guest_id=user_id).first()
-#         if not user_instance:
-#             raise ValidationError("User with that ID does not exist")
-
-#         bookings = Booking.objects.filter(room_id__in=room_ids, user_id=user_instance.id)
-#         if not bookings.exists():
-#             raise ValidationError("User must book the specified rooms before check-in")
-
-#         serializer = self.serializer_class(instance=bookings, data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             serializer.save()
-#             return Response({
-#                 'message': 'Rooms checked in successfully'
-#             }, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-       
-       
-# class CheckInView(GenericAPIView):
-#     serializer_class = CheckInSerializer
-#     renderer_classes = (ApiCustomRenderer,)
-#     #permission_classes = [IsAuthenticated]
-
-#     def patch(self, request):
-#         User = apps.get_model('accounts', 'User')
-       
-#         user_instance = User.objects.filter(**{'guest_id': request.data.get("user_id")})
-#         if not user_instance:
-#             raise ValidationError("User with that id does not exist")
-#         user_instance = user_instance[0]
-
-#         record = Booking.objects.filter(Q(room_id = request.data.get("room_id")) & Q(user_id = user_instance.id))
-#         if not record:
-#             raise ValidationError("User must book a room before check-in")
-#         record = record[0]
-
-#         serializer=self.serializer_class(instance=record, data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#              serializer.update(record, request.data)
-#              room_data=serializer.data
-#              return Response({
-#                     'payload':None,
-#                 }, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
-       
-    
-# class CheckOutView(GenericAPIView):
-#     serializer_class = CheckOutSerializer
-#     renderer_classes = (ApiCustomRenderer,)
-#     #permission_classes = [IsAuthenticated]
-
-#     def patch(self, request):
-#         User = apps.get_model('accounts', 'User')
-#         user_instance = User.objects.filter(**{'guest_id': request.data.get("user_id")})
-#         if not user_instance:
-#             raise ValidationError("User with that id does not exist")
-#         user_instance = user_instance[0]
-        
-#         record = Booking.objects.filter(Q(room_id = request.data.get("room_id")) & Q(user_id = user_instance.id))
-#         if not record:
-#             raise ValidationError("User must book a room before check-out")
-#         record = record[0]
-#         serializer=self.serializer_class(instance=record, data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             serializer.update(record, request.data)
-#             room_data=serializer.data
-#             return Response({
-#                 'payload':None,
-#             }, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class DashboardBootstrapView(GenericAPIView):
     serializer_class = DashboardBootstrapSerializer
@@ -445,43 +365,20 @@ class RoomBootstrapView(GenericAPIView):
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    
 class UserCheckoutView(GenericAPIView):
     serializer_class = UserCheckoutSerializer
     renderer_classes = (ApiCustomRenderer,)
-    # permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
 
     def patch(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer=self.serializer_class(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            user_instance = apps.get_model('accounts', 'User').objects.filter(guest_id=request.data.get("user_id")).first()
-            if not user_instance:
-                raise ValidationError("User with that ID does not exist")
-
             serializer.update(validated_data=request.data)
-            room_data = request.data.get("room_id")
-            send_admin_notification(user_instance, room_data, 'check-out')
-            
+            data=serializer.data
             return Response({
-                'payload': None,
+                'payload':None,
+             
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-# class UserCheckoutView(GenericAPIView):
-#     serializer_class = UserCheckoutSerializer
-#     renderer_classes = (ApiCustomRenderer,)
-#     #permission_classes = [IsAuthenticated]
-
-#     def patch(self, request):
-#         serializer=self.serializer_class(data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             serializer.update(validated_data=request.data)
-#             data=serializer.data
-#             return Response({
-#                 'payload':None,
-             
-#             }, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
