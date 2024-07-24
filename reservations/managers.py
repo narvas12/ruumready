@@ -20,14 +20,13 @@ class BookingManager(models.Manager):
     
     # ===============================modified create_booking manager to allow user book a room multiple times except overlapong dates=====================
     def create_booking(self, room_id, user_id, start_date, end_date):
-        # access respective models with django apps to avoid circular dependency
         Room = apps.get_model('rooms', 'Room')
         UserModel = apps.get_model('accounts', 'User')
         RoomAllocationModel = apps.get_model('reservations', 'RoomAllocation')
         Booking = apps.get_model('reservations', 'Booking')
-        
+
         BOOKED_STATUS = RoomStatus.BOOKED.value
-        
+
         if not room_id:
             raise serializers.ValidationError(_("Room Id is required"))
         if not user_id:
@@ -36,30 +35,31 @@ class BookingManager(models.Manager):
             raise serializers.ValidationError(_("Start date is required"))
         if not end_date:
             raise serializers.ValidationError(_("End date is required"))
-        
-        room_allocation_instance = RoomAllocationModel.objects.filter(**{'room': room_id})
+
+        # Fetch room allocation instance
+        room_allocation_instance = RoomAllocationModel.objects.filter(room_id=room_id).first()
         if not room_allocation_instance:
             raise NotFound("Room does not exist")
-        room_allocation_instance = room_allocation_instance[0]
-        
-        if not room_allocation_instance.availability_status:  
+
+        if not room_allocation_instance.availability_status:
             raise serializers.ValidationError(_("Room is currently unavailable"))
-        
-        should_proceed_with_booking = self.check_room_availability_by_dates(room_id, start_date, end_date)
-        
-        room_instance = Room.objects.filter(**{'id': room_id})
+
+        # Check room availability by dates
+        self.check_room_availability_by_dates(room_id, start_date, end_date)
+
+        # Fetch room instance
+        room_instance = Room.objects.filter(id=room_id).first()
         if not room_instance:
             raise NotFound("Room does not exist")
-        room_instance = room_instance[0]
-        
-        user_instance = UserModel.objects.filter(**{'guest_id': user_id})
+
+        # Fetch user instance
+        user_instance = UserModel.objects.filter(guest_id=user_id).first()
         if not user_instance:
             raise NotFound("User does not exist")
-        user_instance = user_instance[0]
         
         if user_instance.is_staff:
             raise serializers.ValidationError("Not accessible to Administrator")
-        
+
         # Check if the user has already booked the room for non-overlapping dates
         existing_bookings = Booking.objects.filter(
             room=room_instance,
@@ -69,90 +69,23 @@ class BookingManager(models.Manager):
         )
         if existing_bookings.exists():
             raise serializers.ValidationError(_("User has already booked the room for other dates"))
-        
+
         # Proceed with booking if everything is valid
         booking = self.model(room=room_instance, user=user_instance, start_date=start_date, end_date=end_date)
         booking.save(using=self._db)
-        
+
         try:
             room_allocation_instance.room = room_instance
             room_allocation_instance.status = BOOKED_STATUS
             room_allocation_instance.booking = booking
-            
+
             booking.save(using=self._db)
             room_allocation_instance.save(using=self._db)
-            
+
         except Exception as e:
             return e
-        
+
         return booking
-    
-    
-    # ============================previous create_booking manager ==========================
-    # def create_booking(self, room_id, user_id, start_date, end_date):
-    #     # access respective models with django apps to avoid circular dependency
-    #     Room = apps.get_model('rooms', 'Room')
-    #     UserModel = apps.get_model('accounts', 'User')
-    #     RoomAllocationModel = apps.get_model('reservations', 'RoomAllocation')
-    #     Booking = apps.get_model('reservations', 'Booking')
-        
-    #     BOOKED_STATUS = RoomStatus.BOOKED.value
-        
-    #     if not room_id:
-    #         raise serializers.ValidationError(_("Room Id is required"))
-    #     if not user_id:
-    #         raise serializers.ValidationError(_("User Id is required"))
-    #     if not start_date:
-    #         raise serializers.ValidationError(_("Start date is required"))
-    #     if not end_date:
-    #         raise serializers.ValidationError(_("Start date is required"))
-    #     room_instance = Room.objects.get(id=room_id)
-        
-    #     if not room_instance:
-    #         raise NotFound("Room does not exist")
-        
-                
-    #     user_instance = UserModel.objects.filter(**{'guest_id': user_id})
-    #     if not user_instance:
-    #         raise NotFound("User does not exist")
-    #     user_instance = user_instance[0]
-        
-    #     if user_instance.is_staff:
-    #       raise serializers.ValidationError("Not accessible to Administrator")
-    
-    #     room_allocation_instance = RoomAllocationModel.objects.filter(**{'room': room_id})
-    #     if not room_allocation_instance:
-    #         raise NotFound("Room does not exist")
-    #     room_allocation_instance = room_allocation_instance[0]
-        
-    #     if not room_allocation_instance.availability_status:  
-    #         raise serializers.ValidationError(_("Room is currently unavailable"))
-        
-    #     # if room_allocation_instance.user:  
-    #     #     raise serializers.ValidationError(_("Room is currently in use"))
-    #     # if room_allocation_instance.booking:  
-    #     #     raise serializers.ValidationError(_("Room is currently in use"))
-        
-    #     booking_instance = Booking.objects.filter(Q(room_id = room_id) & Q(user_id = user_instance.id))
-    #     if booking_instance:
-    #         raise serializers.ValidationError("Room already booked")
-        
-    #     booking = self.model(room=room_instance, user=user_instance, start_date=start_date, end_date=end_date)
-    #     booking.save(using=self._db)
-        
-    #     try:
-            
-    #        room_allocation_instance.room = room_instance
-    #        room_allocation_instance.status = BOOKED_STATUS
-    #        room_allocation_instance.booking = booking
-            
-    #        booking.save(using=self._db)
-    #        room_allocation_instance.save(using=self._db)
-            
-    #     except Exception as e:
-    #         return e
-        
-    #     return booking
     
     
     # =========================================modified create_boopking_1==================================
@@ -224,179 +157,28 @@ class BookingManager(models.Manager):
         
         return booking
         
-    # =========================================previous create_boopking_1==================================
-    # def create_booking_1(self, room_id, user_id, start_date, end_date):
-    #     # access respective models with django apps to avoid circular dependency
-    #     Room = apps.get_model('rooms', 'Room')
-    #     UserModel = apps.get_model('accounts', 'User')
-    #     RoomAllocationModel = apps.get_model('reservations', 'RoomAllocation')
-    #     Booking = apps.get_model('reservations', 'Booking')
-        
-    #     BOOKED_STATUS = RoomStatus.BOOKED.value
-        
-    #     if not room_id:
-    #         raise serializers.ValidationError(_("Room Id is required"))
-    #     if not user_id:
-    #         raise serializers.ValidationError(_("User Id is required"))
-    #     if not start_date:
-    #         raise serializers.ValidationError(_("Start date is required"))
-    #     if not end_date:
-    #         raise serializers.ValidationError(_("Start date is required"))
-        
-    #     room_allocation_instance = RoomAllocationModel.objects.filter(**{'room': room_id})
-    #     if not room_allocation_instance:
-    #         raise NotFound("Room does not exist")
-    #     room_allocation_instance = room_allocation_instance[0]
-        
-    #     if not room_allocation_instance.availability_status:  
-    #         raise serializers.ValidationError(_("Room is currently unavailable"))
-        
-    #     should_proceed_with_booking = self.check_room_availability_by_dates(room_id, start_date, end_date)
-        
-    #     room_instance = Room.objects.filter(**{'id': room_id})
-    #     if not room_instance:
-    #         raise NotFound("Room does not exist")
-    #     room_instance = room_instance[0]
-        
-    #     user_instance = UserModel.objects.filter(**{'guest_id': user_id})
-    #     if not user_instance:
-    #         raise NotFound("User does not exist")
-    #     user_instance = user_instance[0]
-        
-    #     if user_instance.is_staff:
-    #       raise serializers.ValidationError("Not accessible to Administrator")
-        
-    #     # if room_allocation_instance.booking:
-    #     #     booking_instance = Booking.objects.filter(Q(booking_id = room_allocation_instance.booking.id))
-    #     #     result = self.check_room_availability_by_dates(booking_instance.room.id, booking_instance.start_date, booking_instance.end_date)
-            
-    #     booking_instance = Booking.objects.filter(Q(room_id = room_id) & Q(user_id = user_instance.id) & Q(check_out__isnull=True))
-    #     if booking_instance:
-    #         raise serializers.ValidationError("Room already booked")
-        
-    #     booking = self.model(room=room_instance, user=user_instance, start_date=start_date, end_date=end_date)
-    #     # booking.save(using=self._db)
-        
-    #     try:
-    #        room_allocation_instance.room = room_instance
-    #        room_allocation_instance.status = BOOKED_STATUS
-    #        room_allocation_instance.booking = booking
-            
-    #        booking.save(using=self._db)
-    #        room_allocation_instance.save(using=self._db)
-            
-    #     except Exception as e:
-    #         return e
-        
-    #     return booking
-    
-    
-    
-    # def create_bookingInit(self, room_id, user_id, start_date, end_date):
-    #     # access respective models with django apps to avoid circular dependency
-    #     Room = apps.get_model('rooms', 'Room')
-    #     UserModel = apps.get_model('accounts', 'User')
-    #     RoomAllocationModel = apps.get_model('reservations', 'RoomAllocation')
-        
-    #     if not room_id:
-    #         raise serializers.ValidationError(_("Room Id is required"))
-    #     if not user_id:
-    #         raise serializers.ValidationError(_("User Id is required"))
-        
-    #     user_instance = UserModel.objects.filter(**{'guest_id': user_id})
-    #     if not user_instance:
-    #         raise NotFound("User does not exist")
-    #     user_instance = user_instance[0]
-        
-    #     room_allocation_instance = RoomAllocationModel.objects.filter(**{'room': room_id})
-    #     if not room_allocation_instance:
-    #         raise NotFound("Room does not exist")
-    #     room_allocation_instance = room_allocation_instance[0]
-        
-    #     if not room_allocation_instance.availability_status:  
-    #         raise serializers.ValidationError(_("Room is currently unavailable"))
-    #     if room_allocation_instance.user:  
-    #         raise serializers.ValidationError(_("Room is currently in use"))
-    #     if room_allocation_instance.booking:  
-    #         raise serializers.ValidationError(_("Room is currently in use"))
-        
-    #     booking_status = RoomStatus[RoomStatus.BOOKED.name].value
-
-    #     room_instance = Room.objects.get(id=room_id)
-    #     if not room_instance:
-    #         raise NotFound("Room does not exist")
-        
-    #     booking = self.model(room=room_instance, user=user_instance)
-    #     booking.save(using=self._db)
-        
-    #     try:
-    #         room_allocation_instance.room = room_instance
-    #         room_allocation_instance.user = user_instance
-    #         room_allocation_instance.status = booking_status
-    #         room_allocation_instance.booking = booking
-            
-    #         booking.save(using=self._db)
-    #         room_allocation_instance.save(using=self._db)
-            
-    #     except Exception as e:
-    #         return e
-        
-    #     return booking
-    
-    # ================================= modified check_room_availability_by_dates to allow multiple bookings for a room on differnt dates==========================
-    
+  
     def check_room_availability_by_dates(self, room_id, start_date, end_date):
-        # Access respective models with Django apps to avoid circular dependency
         Booking = apps.get_model('reservations', 'Booking')
         today = date.today()
-        
+
         if start_date < today:
-            raise serializers.ValidationError(_("Start date cannot be in the past")) 
+            raise serializers.ValidationError(_("Start date cannot be in the past"))
         if end_date <= today:
-            raise serializers.ValidationError(_("End date cannot be in the past")) 
+            raise serializers.ValidationError(_("End date cannot be in the past"))
         if start_date == end_date:
-            raise serializers.ValidationError(_("End date cannot be the same as start date")) 
-        
-        # Check if there are any bookings that fall within the provided dates
+            raise serializers.ValidationError(_("End date cannot be the same as start date"))
+
         overlapping_bookings = Booking.objects.filter(
             room_id=room_id,
-            start_date__lte=start_date,
-            end_date__gte=end_date
+            start_date__lt=end_date,
+            end_date__gt=start_date
         )
-        
+
         if overlapping_bookings.exists():
             raise serializers.ValidationError(_("Room is already booked for this period"))
-        
+
         return True
-    
-    # ================================= previous check_room_availability_by_dates ==========================
-    
-    # def check_room_availability_by_dates(self, room_id, start_date, end_date):
-    #     # access respective models with django apps to avoid circular dependency
-    #     Booking = apps.get_model('reservations', 'Booking')
-    #     today = date.today()
-        
-    #     if start_date < today:
-    #         raise serializers.ValidationError(_("Start date cannot be in the past")) 
-    #     if end_date <= today:
-    #         raise serializers.ValidationError(_("End date cannot be in the past")) 
-    #     if start_date == end_date:
-    #         raise serializers.ValidationError(_("End date cannot be same as start date")) 
-        
-    #     #bookings = Booking.objects.filter(**{'room': room_id})
-    #     bookings = Booking.objects.filter(Q(room_id = room_id) & Q(check_out__isnull=True))
-    #     if len(bookings) > 0:
-    #         for book in bookings:
-                
-    #             can_proceed_to_book1 = is_between(start_date, book.start_date, book.end_date)
-    #             if can_proceed_to_book1:
-    #                 raise serializers.ValidationError(_("Room has already been booked for this period"))
-    #             can_proceed_to_book2 = is_between(end_date, book.start_date, book.end_date)
-    #             if can_proceed_to_book2:
-    #                 raise serializers.ValidationError(_("Room has already been booked for this period")) 
-    #             if start_date < book.start_date and end_date > book.end_date:
-    #                 raise serializers.ValidationError(_("Room has already been booked for this period")) 
-    #     return True
     
     
     def check_user_in(self, user_id, room_id):
@@ -463,40 +245,33 @@ class BookingManager(models.Manager):
         if not user_id:
             raise serializers.ValidationError(_("User ID is required"))
         
-        user_instance = UserModel.objects.filter(**{'guest_id': user_id})
+        user_instance = UserModel.objects.filter(**{'guest_id': user_id}).first()
         if not user_instance:
             raise serializers.ValidationError("User does not exist")
-        user_instance = user_instance[0]
         
         if user_instance.is_staff:
-          raise serializers.ValidationError("Not accessible to Administrator")
+            raise serializers.ValidationError("Not accessible to Administrator")
         
-        booking_instance = Booking.objects.filter(Q(room_id = room_id) & Q(user_id = user_instance.id)).order_by('-date_created')
+        booking_instance = Booking.objects.filter(Q(room_id=room_id) & Q(user_id=user_instance.id)).order_by('-date_created').first()
         if not booking_instance:
             raise serializers.ValidationError("User must book a room before check-out")
-        booking_instance = booking_instance[0]
-        if booking_instance.user.guest_id != user_id:  
-            raise serializers.ValidationError(_("You have to book a room before you check-out"))
-        if booking_instance.check_out is not None:  
+        
+        if booking_instance.check_out is not None:
             raise serializers.ValidationError(_("User has already checked-out"))
         
-        room_allocation_instance = RoomAllocationModel.objects.filter(Q(room_id = room_id))[0]
+        room_allocation_instance = RoomAllocationModel.objects.filter(Q(room_id=room_id)).first()
+        if not room_allocation_instance:
+            raise serializers.ValidationError(_("Room allocation does not exist"))
         
-        if not room_allocation_instance.availability_status:  
-            raise serializers.ValidationError(_("Room is currently unavailable"))
-        
-        if not room_allocation_instance.availability_status:  
-            raise serializers.ValidationError(_("Room is currently unavailable for check-out. See administrator"))
-        if room_allocation_instance.status == CHECKED_OUT_STATUS or room_allocation_instance.status == AVAILABLE_STATUS or room_allocation_instance.status == BOOKED_STATUS:  
+        if room_allocation_instance.status in [CHECKED_OUT_STATUS, AVAILABLE_STATUS, BOOKED_STATUS]:
             raise serializers.ValidationError(_("User must be checked-in before checkout"))
         
         status_Id = RoomStatus[RoomStatus(AVAILABLE_STATUS).name].value
-        
 
         # GET THE BOOKING RECORD AND UPDATE THE USER CHECK OUT TIME
         check_out_time = datetime.now()
         booking_instance.check_out = check_out_time
-        
+
         # GET THE ROOM ALLOCATION RECORD AND UPDATE THE ROOM STATUS TO CHECKED OUT
         room_allocation_instance.status = status_Id
         room_allocation_instance.user = None
@@ -505,7 +280,7 @@ class BookingManager(models.Manager):
         booking_instance.save(using=self._db)
         room_allocation_instance.save(using=self._db)
         
-        return room_allocation_instance 
+        return room_allocation_instance
     
     def check_user_out_ext(self, id_list):
         Booking = apps.get_model('reservations', 'Booking')
@@ -553,30 +328,6 @@ class BookingManager(models.Manager):
         return records
     
     
-    # def get_rooms_overview(self):
-    #     #Assigning Models
-    #     Booking = apps.get_model('reservations', 'Booking')
-    #     RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
-        
-    #     booking_Ids = []
-    #     records = []
-        
-    #     room_records = RoomAllocation.objects.all()
-    #     if not room_records:
-    #         raise serializers.ValidationError("No records were found")
-        
-    #     for rec in room_records:
-    #         if rec.booking is None:
-    #             continue
-    #         booking_Ids.append(rec.booking_id)
-                
-    #     for id in booking_Ids:
-    #         booking = Booking.objects.get(id=id)
-    #         if not booking:
-    #             raise serializers.ValidationError("No booking record were found")
-    #         records.append(booking)
-        
-    #     return records
     
     def get_rooms_overview(self):
         #Assigning Models
@@ -589,25 +340,7 @@ class BookingManager(models.Manager):
             serializers.ValidationError("No records found for that period")
         return records
         
-        # booking_Ids = []
-        # records = []
-        
-        # room_records = RoomAllocation.objects.all()
-        # if not room_records:
-        #     raise serializers.ValidationError("No records were found")
-        
-        # for rec in room_records:
-        #     if rec.booking is None:
-        #         continue
-        #     booking_Ids.append(rec.booking_id)
-                
-        # for id in booking_Ids:
-        #     booking = Booking.objects.get(id=id)
-        #     if not booking:
-        #         raise serializers.ValidationError("No booking record were found")
-        #     records.append(booking)
-        
-        # return records
+       
     
     def get_rooms_overview_for_doc(self, date_from, date_to):
         #Assigning Models
@@ -690,39 +423,6 @@ class BookingManager(models.Manager):
                 booked_rooms.append(room_details)
 
         return booked_rooms
-        
-    
-    
-    # def get_user_booked_rooms(self, user_id):
-    #     RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
-    #     Booking = apps.get_model('reservations', 'Booking')
-    #     Room = apps.get_model('rooms', 'Room')
-
-    #     if not user_id:
-    #         raise serializers.ValidationError("User ID is required")
-
-    #     user_instance = apps.get_model('accounts', 'User')
-    #     if not user_instance:
-    #         raise serializers.ValidationError("User does not exist")
-
-    #     bookings = Booking.objects.filter(**{'user':user_id}).order_by("-date_created")
-
-    #     room_allocations = RoomAllocation.objects.filter(booking__in=bookings)
-
-    #     booked_rooms = []
-    #     for allocation in room_allocations:
-    #         room_details = {
-    #             'room_id': allocation.room.id,
-    #             'room': allocation.room.room_name,
-    #             'start_date': allocation.booking.start_date,
-    #             'end_date': allocation.booking.end_date,
-    #             'check_in': allocation.booking.check_in,
-    #             'check_out': allocation.booking.check_out,
-    #         }
-    #         booked_rooms.append(room_details)
-
-    #     return booked_rooms
-
 
 
 class RoomAllocationManager(models.Manager):
@@ -740,7 +440,7 @@ class RoomAllocationManager(models.Manager):
             formatted_records = format_room_allocation_records(records)
             return formatted_records
         
-        #room_status = int(room_status)
+        room_status = int(room_status)
         check_parsed_status = cast_to_int_with_errors(room_status)
         if not check_parsed_status:
             raise serializers.ValidationError(_("Status value is invalid"))
@@ -849,60 +549,6 @@ class RoomAllocationManager(models.Manager):
         return record
     
     
-
-    # def get_dashboard_bootstrap_data(self):
-    #     #Assigning Models
-    #     Rooms = apps.get_model('rooms', 'Room')
-    #     Booking = apps.get_model('reservations', 'Booking')
-    #     Ratings = apps.get_model('common', 'Rating')
-    #     User = apps.get_model('accounts', 'User')
-        
-    #     record = {}
-    #     guest_count = 0
-    #     room_count = 0        
-    #     checkin_count = 0        
-    #     checkout_count = 0        
-    #     rating_average = 0 
-            
-    #     CHECKED_IN_STATUS = RoomStatus.CHECKED_IN.value
-    #     status_Id = RoomStatus[RoomStatus(CHECKED_IN_STATUS).name].value
-    #     #Setting guests count
-    #     records = User.objects.get_all_users()
-    #     if len(records) < 1:
-    #         guest_count = 0
-    #     elif len(records) > 0:
-    #         guest_count = len(records)
-            
-    #     #Settin Room count
-    #     room_records = Rooms.objects.all()
-    #     if len(room_records) < 1:
-    #         room_count = 0
-    #     elif len(room_records) > 0:
-    #         room_count = len(room_records)
-            
-    #     #Setting check in count
-    #     booking_checkin_records = Booking.objects.filter(~Q(check_in__isnull=True))
-    #     booking_checkout_records = Booking.objects.filter(~Q(check_out__isnull=True))
-        
-    #     checkin_count = len(booking_checkin_records)
-    #     checkout_count = len(booking_checkout_records)
-        
-    #     #Setting Ratings 
-    #     ratings_record = Ratings.objects.all()
-    #     if len(ratings_record) < 1:
-    #         rating_average = 0
-            
-    #     for rating in ratings_record:
-    #         rating_average += int(rating.rating_type)
-    
-    #     record["guest_count"] = guest_count
-    #     record["checkin_count"] = checkin_count
-    #     record["checkout_count"] = checkout_count
-    #     record["room_count"] = room_count
-    #     record["rating_average"] = 0 if rating_average < 1 else rating_average / len(ratings_record)
-    
-    #     return record
-    
     def get_room_bootstrap_data(self):
         #Assigning Models
         RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
@@ -971,8 +617,6 @@ class RoomAllocationManager(models.Manager):
         return record
 
 
-
-    
     
     def get_room_history(self, room_id):
         Room = apps.get_model('rooms', 'Room')

@@ -89,7 +89,7 @@ class MultipleCheckInSerializer(serializers.Serializer):
     room_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True)  # Assuming room_ids will be a list of integers
     
     class Meta:
-        fields = '__all__'  # This is not necessary in a Serializer class, as Meta is typically used in ModelSerializer
+        fields = '__all__'
 
     def validate(self, attrs):
         user_id = attrs.get('user_id')
@@ -101,21 +101,7 @@ class MultipleCheckInSerializer(serializers.Serializer):
         if not room_ids:
             raise serializers.ValidationError("Room IDs are required")
         
-        # Validate room_ids further if needed (e.g., check if they are valid room IDs)
-        # Add your validation logic here
-        
         return attrs
-
-    def update(self, instance, validated_data):
-        user_id = validated_data.get('user_id')
-        room_ids = validated_data.get('room_ids')
-        
-        # Perform the check-in operation for each room ID
-        for room_id in room_ids:
-            model = Booking.objects.check_user_in(user_id=user_id, room_id=room_id)
-            # Optionally handle the model instance or return it
-        
-        return validated_data 
     
 class CheckOutSerializer(serializers.Serializer):
     user_id = serializers.CharField(max_length=100, min_length=4, write_only=True)

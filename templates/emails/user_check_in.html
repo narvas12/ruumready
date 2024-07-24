@@ -1,0 +1,14 @@
+<html>
+<body>
+    <p>Dear {{ user.get_full_name }},</p>
+    <p>We are pleased to inform you that the following rooms have been successfully checked in:</p>
+    <ul>
+        {% for booking in bookings %}
+            <li>Room ID: {{ booking.room.room_id }}, Check-in Time: {{ booking.check_in }}</li>
+        {% endfor %}
+    </ul>
+    <p>Thank you for choosing our service!</p>
+    <p>Best regards,</p>
+    <p>{{ site_name }} Team</p>
+</body>
+</html>

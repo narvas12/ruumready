@@ -1,0 +1,13 @@
+<html>
+<body>
+    <p>Dear Admin,</p>
+    <p>The following rooms have been checked in:</p>
+    <ul>
+        {% for booking in bookings %}
+            <li>Room ID: {{ booking.room.room_id }}, User: {{ user.get_full_name }}, Check-in Time: {{ booking.check_in }}</li>
+        {% endfor %}
+    </ul>
+    <p>Thank you,</p>
+    <p>{{ site_name }} System</p>
+</body>
+</html>

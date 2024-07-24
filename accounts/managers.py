@@ -9,7 +9,7 @@ from django.apps import apps
 from rest_framework.exceptions import NotFound, ValidationError
 import requests
 from django.db import models
-
+from asgiref.sync import async_to_sync
 from .utils.api import get_verified_userdetails_by_phone  as _get_verified_userdetails_by_phone
 from rest_framework import serializers
 import cloudinary
@@ -57,7 +57,6 @@ class UserManager(BaseUserManager):
              raise NotFound("Room does not exist")
          
         
-        
         user = self.model(mobile=mobile, full_name=full_name, guest_id=guest_id, email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -69,11 +68,11 @@ class UserManager(BaseUserManager):
         
         
         # SEND NOTIFICATIONS HERE
-        Notification.send_email_async(to_email=email, subject=email_subject, html_content=html_content)
-        Notification.send_sms_async(recipient=mobile, message=sms_msg)
+        async_to_sync(Notification.send_email_async(to_email=email, subject=email_subject, html_content=html_content))
+        async_to_sync(Notification.send_sms_async(recipient=mobile, message=sms_msg))
         
         try:
-            # uploading image then set the sgring in the db
+
             if doc:
                 file = doc
                 secure_url = self.upload_image(file)  

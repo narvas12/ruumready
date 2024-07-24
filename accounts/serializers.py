@@ -205,28 +205,6 @@ class AdminRegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-# class AdminRegisterSerializer(serializers.ModelSerializer):
-#     password = serializers.CharField(max_length=68, min_length=6, write_only=True)
-#     password2= serializers.CharField(max_length=68, min_length=6, write_only=True)
-
-#     class Meta:
-#         model=User
-#         fields = ['email', 'full_name', 'password', 'password2']
-
-#     def validate(self, attrs):
-#         password=attrs.get('password', '')
-#         password2 =attrs.get('password2', '')
-#         if password !=password2:
-#             raise serializers.ValidationError("passwords do not match")
-         
-#         return attrs
-
-#     def create(self, validated_data):
-#         user = User.objects.create_user(**validated_data)  # Assuming a create_user method
-#         user.is_staff = True
-#         user.is_superuser = True
-#         user.save()
-#         return user
     
     
 class AdminLoginSerializer(serializers.Serializer):
@@ -334,33 +312,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
             return AuthenticationFailed("link is invalid or has expired")
     
 
-# class SetNewPasswordSerializer(serializers.Serializer):
-#     password=serializers.CharField(max_length=100, min_length=6, write_only=True)
-#     confirm_password=serializers.CharField(max_length=100, min_length=6, write_only=True)
-#     uidb64=serializers.CharField(min_length=1, write_only=True)
-#     token=serializers.CharField(min_length=3, write_only=True)
-
-#     class Meta:
-#         fields = ['password', 'confirm_password', 'uidb64', 'token']
-
-#     def validate(self, attrs):
-#         try:
-#             token=attrs.get('token')
-#             uidb64=attrs.get('uidb64')
-#             password=attrs.get('password')
-#             confirm_password=attrs.get('confirm_password')
-
-#             user_id=force_str(urlsafe_base64_decode(uidb64))
-#             user=User.objects.get(id=user_id)
-#             if not PasswordResetTokenGenerator().check_token(user, token):
-#                 raise AuthenticationFailed("reset link is invalid or has expired", 401)
-#             if password != confirm_password:
-#                 raise AuthenticationFailed("passwords do not match")
-#             user.set_password(password)
-#             user.save()
-#             return user
-#         except Exception as e:
-#             return AuthenticationFailed("link is invalid or has expired")
     
 class LogoutUserSerializer(serializers.Serializer):
     refresh_token=serializers.CharField()

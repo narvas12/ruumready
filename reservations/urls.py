@@ -10,7 +10,7 @@ urlpatterns = [
         path('change-room-status/<int:id>', RoomStatusView.as_view(), name='change-room-status'),
         path('book-room', BookRoomView.as_view(), name='book-room'),
         path('check-user-in', CheckInView.as_view(), name='check-user-in'),
-        path('multiple_rooms_check_in', MulipleCheckInView.as_view(), name='multiple_rooms_check_in'),
+        path('multiple_rooms_check_in', MultipleCheckInView.as_view(), name='multiple_rooms_check_in'),
         path('check-user-out', CheckOutView.as_view(), name='check-user-out'),
         path('single-booking-history/<int:id>', SingleBookingView.as_view(), name='single-booking-history'),
         

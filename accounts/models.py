@@ -57,6 +57,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_full_name(self):
         return f"{self.full_name.title()}"
     
+    def get_full_name(self):
+        return f"{self.full_name}"
+    
 class OneTimePassword(models.Model):
     user=models.OneToOneField(User, on_delete=models.CASCADE)
     otp=models.CharField(max_length=6)

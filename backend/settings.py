@@ -167,7 +167,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -272,6 +272,8 @@ CLOUDINARY_CLOUD_NAME=env("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY=env("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET=env("CLOUDINARY_API_SECRET")
 
+DEFAULT_FROM_EMAIL = "luxeville.notification@ruumready.co"
+ADMIN_EMAIL = "devcaliban@gmail.com"
 # EMAIL_PORT = '2525'
 # EMAIL_USE_TLS = True
 

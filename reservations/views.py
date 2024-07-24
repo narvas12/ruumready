@@ -3,7 +3,10 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
-
+from django.utils import timezone
+from backend import settings
+from common.notification import Notification
+from reservations.utils import send_check_in_email
 from rooms.models import Room
 from .serializers import  BookingCreateSerializer, BookingsHistorySerializer, CheckInSerializer, CheckOutSerializer, DashboardBootstrapSerializer, MultipleCheckInSerializer, RoomAllocationHistorySerializer, RoomBootstrapSerializer, RoomStatusSerializer, RoomByStatusSerializer, UserCheckoutSerializer
 from common.renderers import ApiCustomRenderer
@@ -18,6 +21,7 @@ from django.http import HttpResponse, FileResponse
 from reportlab.pdfgen import canvas
 from reportlab.lib.units  import inch
 from reportlab.lib.pagesizes import letter
+from asgiref.sync import async_to_sync
 
 
 # Create your views here.
@@ -255,16 +259,21 @@ class BookRoomView(GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     
-class MulipleCheckInView(GenericAPIView):
+class MultipleCheckInView(GenericAPIView):
     serializer_class = MultipleCheckInSerializer
     renderer_classes = (ApiCustomRenderer,)
     # permission_classes = [IsAuthenticated]  # Uncomment if authentication is required
 
     def patch(self, request):
         User = apps.get_model('accounts', 'User')
+        Room = apps.get_model('rooms', 'Room')  # Adjust this based on your app structure
+        Booking = apps.get_model('reservations', 'Booking')
 
-        user_id = request.data.get("user_id")
-        room_ids = request.data.get("room_ids")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_id = serializer.validated_data.get("user_id")
+        room_ids = serializer.validated_data.get("room_ids")
 
         user_instance = User.objects.filter(guest_id=user_id).first()
         if not user_instance:
@@ -274,13 +283,54 @@ class MulipleCheckInView(GenericAPIView):
         if not bookings.exists():
             raise ValidationError("User must book the specified rooms before check-in")
 
-        serializer = self.serializer_class(instance=bookings, data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
+        checkin_time = timezone.now()
+        to_email = "devcaliban@gmail.com"
+        email_subject = "New Check-In"
+        user_full_name = user_instance.get_full_name() if hasattr(user_instance, 'get_full_name') else f"{user_instance.first_name} {user_instance.last_name}"
+
+        room_details = Room.objects.filter(id__in=room_ids).values('room_id', 'room_name')
+        room_details_dict = {room['room_id']: room['room_name'] for room in room_details}
+        
+        already_checked_in_rooms = []
+        successfully_checked_in_rooms = []
+
+        for booking in bookings:
+            if booking.check_in:
+                already_checked_in_rooms.append(booking.room_id)
+            else:
+                booking.check_in = checkin_time
+                booking.save()
+                successfully_checked_in_rooms.append(booking.room_id)
+        
+        response_data = {
+            'message': 'Rooms checked in successfully',
+            'already_checked_in_rooms': already_checked_in_rooms,
+            'successfully_checked_in_rooms': successfully_checked_in_rooms
+        }
+
+        # Prepare email content and send notification if there are new check-ins
+        if successfully_checked_in_rooms:
+            room_details_list = [f"{room_details_dict.get(room_id)} - {room_id}" for room_id in successfully_checked_in_rooms]
+            already_checked_in_details = [f"{room_details_dict.get(room_id)} - {room_id}" for room_id in already_checked_in_rooms]
+            
+            html_content = f"""
+            The following rooms have been checked in: {', '.join(room_details_list)}
+            User: {user_full_name}
+            Check-in Time: {checkin_time}
+            """
+            if already_checked_in_rooms:
+                html_content += f"<br>Note: The following rooms were already checked in: {', '.join(already_checked_in_details)}"
+            
+            async_to_sync(Notification.send_email_async)(to_email=to_email, subject=email_subject, html_content=html_content)
+        
+        # Return different response based on check-in status
+        if successfully_checked_in_rooms:
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
             return Response({
-                'message': 'Rooms checked in successfully'
-            }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                'message': 'All specified rooms have already been checked in',
+                'already_checked_in_rooms': already_checked_in_rooms
+            }, status=status.HTTP_400_BAD_REQUEST)
        
        
 class CheckInView(GenericAPIView):
