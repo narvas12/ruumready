@@ -230,7 +230,9 @@ class BookingManager(models.Manager):
         return room_allocation_instance 
     
     
-
+    
+    
+    
     def check_user_out(self, user_id, room_id):
         Booking = apps.get_model('reservations', 'Booking')
         UserModel = apps.get_model('accounts', 'User')
@@ -243,33 +245,40 @@ class BookingManager(models.Manager):
         if not user_id:
             raise serializers.ValidationError(_("User ID is required"))
         
-        user_instance = UserModel.objects.filter(**{'guest_id': user_id}).first()
+        user_instance = UserModel.objects.filter(**{'guest_id': user_id})
         if not user_instance:
             raise serializers.ValidationError("User does not exist")
+        user_instance = user_instance[0]
         
         if user_instance.is_staff:
-            raise serializers.ValidationError("Not accessible to Administrator")
+          raise serializers.ValidationError("Not accessible to Administrator")
         
-        booking_instance = Booking.objects.filter(Q(room_id=room_id) & Q(user_id=user_instance.id)).order_by('-date_created').first()
+        booking_instance = Booking.objects.filter(Q(room_id = room_id) & Q(user_id = user_instance.id)).order_by('-date_created')
         if not booking_instance:
             raise serializers.ValidationError("User must book a room before check-out")
-        
-        if booking_instance.check_out is not None:
+        booking_instance = booking_instance[0]
+        if booking_instance.user.guest_id != user_id:  
+            raise serializers.ValidationError(_("You have to book a room before you check-out"))
+        if booking_instance.check_out is not None:  
             raise serializers.ValidationError(_("User has already checked-out"))
         
-        room_allocation_instance = RoomAllocationModel.objects.filter(Q(room_id=room_id)).first()
-        if not room_allocation_instance:
-            raise serializers.ValidationError(_("Room allocation does not exist"))
+        room_allocation_instance = RoomAllocationModel.objects.filter(Q(room_id = room_id))[0]
         
-        if room_allocation_instance.status in [CHECKED_OUT_STATUS, AVAILABLE_STATUS, BOOKED_STATUS]:
+        if not room_allocation_instance.availability_status:  
+            raise serializers.ValidationError(_("Room is currently unavailable"))
+        
+        if not room_allocation_instance.availability_status:  
+            raise serializers.ValidationError(_("Room is currently unavailable for check-out. See administrator"))
+        if room_allocation_instance.status == CHECKED_OUT_STATUS or room_allocation_instance.status == AVAILABLE_STATUS or room_allocation_instance.status == BOOKED_STATUS:  
             raise serializers.ValidationError(_("User must be checked-in before checkout"))
         
         status_Id = RoomStatus[RoomStatus(AVAILABLE_STATUS).name].value
+        
 
         # GET THE BOOKING RECORD AND UPDATE THE USER CHECK OUT TIME
         check_out_time = datetime.now()
         booking_instance.check_out = check_out_time
-
+        
         # GET THE ROOM ALLOCATION RECORD AND UPDATE THE ROOM STATUS TO CHECKED OUT
         room_allocation_instance.status = status_Id
         room_allocation_instance.user = None
@@ -278,48 +287,42 @@ class BookingManager(models.Manager):
         booking_instance.save(using=self._db)
         room_allocation_instance.save(using=self._db)
         
-        return room_allocation_instance
+        return room_allocation_instance 
     
     def check_user_out_ext(self, id_list):
         Booking = apps.get_model('reservations', 'Booking')
         UserModel = apps.get_model('accounts', 'User')
         RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
-
+        
         CHECKED_OUT_STATUS = RoomStatus.CHECKED_OUT.value
         AVAILABLE_STATUS = RoomStatus.AVAILABLE.value
-
-        checked_out_rooms = []
-
+        BOOKED_STATUS = RoomStatus.BOOKED.value
+        
         for id in id_list:
             status_Id = RoomStatus[RoomStatus(AVAILABLE_STATUS).name].value
-            record = RoomAllocation.objects.filter(id=id).first()
+            record = RoomAllocation.objects.filter(**{'id': id})
             if not record:
                 raise serializers.ValidationError("Record does not exist")
+            record = record[0]
             
             # GET THE BOOKING RECORD AND UPDATE THE USER CHECK OUT TIME
-            booking_record = Booking.objects.filter(id=record.booking.id).first()
+            booking_record = Booking.objects.filter(**{'id': record.booking.id})
             if not booking_record:
                 raise serializers.ValidationError("Record does not exist")
+            booking_record = booking_record[0]
             
             check_out_time = datetime.now()
             booking_record.check_out = check_out_time
-
+        
             # GET THE ROOM ALLOCATION RECORD AND UPDATE THE ROOM STATUS TO CHECKED OUT
             record.status = status_Id
             record.user = None
             record.booking = None
-
+            
             booking_record.save(using=self._db)
             record.save(using=self._db)
-
-            checked_out_rooms.append({
-                'room_id': record.room_id,
-                'room_name': record.room_name,  # Assuming RoomAllocation has room_name field
-                'user': record.user,
-                'check_out_time': check_out_time
-            })
-
-        return checked_out_rooms
+            
+        return record
             
     def get_bookings_history(self):
         #Assigning Models

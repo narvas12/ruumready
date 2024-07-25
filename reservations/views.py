@@ -417,31 +417,17 @@ class RoomBootstrapView(GenericAPIView):
 class UserCheckoutView(GenericAPIView):
     serializer_class = UserCheckoutSerializer
     renderer_classes = (ApiCustomRenderer,)
-    # permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
 
     def patch(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer=self.serializer_class(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            checked_out_rooms = serializer.update(validated_data=request.data)
-            
-            self.notify_admins(checked_out_rooms)
-            
+            serializer.update(validated_data=request.data)
+            data=serializer.data
             return Response({
-                'payload': None,
+                'payload':None,
+             
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def notify_admins(self, checked_out_rooms):
-        User = apps.get_model('accounts', 'User')
-        admin_emails = list(User.objects.filter(is_staff=True, is_superuser=True).values_list('email', flat=True))
-        email_subject = "New Check-Out"
 
-        room_details_list = [f"{room['room_name']} - {room['room_id']}" for room in checked_out_rooms]
-        user_full_names = ', '.join({room['user'].get_full_name() if room['user'] and hasattr(room['user'], 'get_full_name') else f"{room['user'].first_name} {room['user'].last_name}" for room in checked_out_rooms})
-        
-        html_content = f"""
-        The following rooms have been checked out: {', '.join(room_details_list)}
-        Users: {user_full_names}
-        """
-        
-        async_to_sync(Notification.send_email_async)(to_email=admin_emails, subject=email_subject, html_content=html_content)
