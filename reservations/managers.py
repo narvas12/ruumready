@@ -230,9 +230,7 @@ class BookingManager(models.Manager):
         return room_allocation_instance 
     
     
-    
-    
-    
+
     def check_user_out(self, user_id, room_id):
         Booking = apps.get_model('reservations', 'Booking')
         UserModel = apps.get_model('accounts', 'User')
@@ -286,36 +284,42 @@ class BookingManager(models.Manager):
         Booking = apps.get_model('reservations', 'Booking')
         UserModel = apps.get_model('accounts', 'User')
         RoomAllocation = apps.get_model('reservations', 'RoomAllocation')
-        
+
         CHECKED_OUT_STATUS = RoomStatus.CHECKED_OUT.value
         AVAILABLE_STATUS = RoomStatus.AVAILABLE.value
-        BOOKED_STATUS = RoomStatus.BOOKED.value
-        
+
+        checked_out_rooms = []
+
         for id in id_list:
             status_Id = RoomStatus[RoomStatus(AVAILABLE_STATUS).name].value
-            record = RoomAllocation.objects.filter(**{'id': id})
+            record = RoomAllocation.objects.filter(id=id).first()
             if not record:
                 raise serializers.ValidationError("Record does not exist")
-            record = record[0]
             
             # GET THE BOOKING RECORD AND UPDATE THE USER CHECK OUT TIME
-            booking_record = Booking.objects.filter(**{'id': record.booking.id})
+            booking_record = Booking.objects.filter(id=record.booking.id).first()
             if not booking_record:
                 raise serializers.ValidationError("Record does not exist")
-            booking_record = booking_record[0]
             
             check_out_time = datetime.now()
             booking_record.check_out = check_out_time
-        
+
             # GET THE ROOM ALLOCATION RECORD AND UPDATE THE ROOM STATUS TO CHECKED OUT
             record.status = status_Id
             record.user = None
             record.booking = None
-            
+
             booking_record.save(using=self._db)
             record.save(using=self._db)
-            
-        return record
+
+            checked_out_rooms.append({
+                'room_id': record.room_id,
+                'room_name': record.room_name,  # Assuming RoomAllocation has room_name field
+                'user': record.user,
+                'check_out_time': check_out_time
+            })
+
+        return checked_out_rooms
             
     def get_bookings_history(self):
         #Assigning Models
